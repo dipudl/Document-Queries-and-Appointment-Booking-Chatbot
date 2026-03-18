@@ -1,0 +1,13 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+python-dotenv==1.0.1
+langchain==0.3.14
+langchain-ollama==0.2.3
+langchain-community==0.3.14
+langchain-chroma==0.2.2
+langgraph==0.2.62
+chromadb==0.6.3
+dateparser==1.2.1
+pypdf==5.1.0
+langchain-openai
