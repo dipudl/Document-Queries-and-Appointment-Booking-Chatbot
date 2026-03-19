@@ -2,6 +2,58 @@
 
 A chatbot that lets you upload documents and ask questions about them (RAG) or book appointments through a guided conversation flow. Built with FastAPI, React, LangGraph and Ollama/OpenAI.
 
+## System Architecture
+
+```mermaid
+flowchart TB
+    User([User Browser])
+
+    subgraph Frontend["Frontend (React + Vite :5173)"]
+        App[App.jsx<br/>State Management]
+        Chat[ChatWindow]
+        Upload[FileUpload]
+        Session[(sessionStorage<br/>session_id)]
+    end
+
+    subgraph Backend["Backend (FastAPI :8000)"]
+        API[API Endpoints<br/>/chat<br/>/upload]
+        Store[(In-Memory Sessions<br/>dict per session_id)]
+
+        subgraph Graph["LangGraph State Machine"]
+            Router{intent_router<br/>LLM Classification}
+            RAG[rag_node<br/>Document Q&A]
+            Appt[appointment_node<br/>Booking Flow]
+        end
+
+        subgraph Tools["Tools"]
+            Search[search_documents]
+            Validate[validate_name<br/>validate_phone<br/>validate_email<br/>extract_date]
+        end
+
+        Ingest[rag.py<br/>Ingest Pipeline<br/>Load → Chunk → Embed]
+    end
+
+    ChromaDB[(ChromaDB<br/>Vector Store<br/>Per-session collections)]
+    LLM[LLM Provider<br/>OpenAI / Ollama]
+
+    User -->|POST /chat| Frontend
+    User -->|Upload file| Frontend
+    App --> Session
+    Frontend -->|API calls| API
+    API --> Store
+    API --> Router
+    Router -->|doc_query| RAG
+    Router -->|appointment| Appt
+    RAG --> Search
+    Appt --> Validate
+    Search --> ChromaDB
+    Upload --> Ingest
+    Ingest --> ChromaDB
+    RAG --> LLM
+    Appt --> LLM
+    Router --> LLM
+```
+
 ## How it works
 
 - **Document Q&A**: Upload a PDF/TXT file, then ask questions. The system chunks and embeds the document using ChromaDB, then retrieves relevant context to answer your queries.
