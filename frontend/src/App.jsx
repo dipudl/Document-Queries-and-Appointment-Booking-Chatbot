@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ChatWindow from './components/ChatWindow'
 import FileUpload from './components/FileUpload'
 
@@ -22,6 +22,13 @@ export default function App() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const sessionId = useRef(getSessionId())
+
+  useEffect(() => {
+    fetch(`/history/${sessionId.current}`)
+      .then(res => res.json())
+      .then(data => { if (data.length) setMessages(data) })
+      .catch(() => {})
+  }, [])
 
   const sendMessage = async () => {
     const text = input.trim()
@@ -66,12 +73,16 @@ export default function App() {
     try {
       const res = await fetch('/upload', { method: 'POST', body: formData })
       const data = await res.json()
+      if (!res.ok) {
+        setMessages(prev => [...prev, { role: 'bot', content: `Error: ${data.detail || 'Failed to upload document.'}` }])
+        return
+      }
       setMessages(prev => [
         ...prev,
         { role: 'bot', content: `Document "${data.filename}" uploaded and processed (${data.chunks} chunks). You can now ask questions about it!` },
       ])
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'bot', content: 'Error: Failed to upload document.' }])
+      setMessages(prev => [...prev, { role: 'bot', content: 'Error: Could not reach the server.' }])
     } finally {
       setLoading(false)
     }

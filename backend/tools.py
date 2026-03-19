@@ -4,7 +4,8 @@ from dateparser.search import search_dates
 from langchain_core.tools import tool
 import chromadb
 from langchain_ollama import OllamaEmbeddings
-from config import CHROMA_PERSIST_DIR, OLLAMA_BASE_URL, EMBED_MODEL
+from langchain_openai import OpenAIEmbeddings
+from config import CHROMA_PERSIST_DIR, OLLAMA_BASE_URL, EMBED_MODEL, LLM_PROVIDER, OPENAI_API_KEY
 
 
 @tool
@@ -64,7 +65,10 @@ def search_documents(query: str, session_id: str) -> dict:
     except Exception:
         return {"results": [], "message": "No documents have been uploaded yet."}
 
-    embedder = OllamaEmbeddings(base_url=OLLAMA_BASE_URL, model=EMBED_MODEL)
+    if LLM_PROVIDER == "openai":
+        embedder = OpenAIEmbeddings(model=EMBED_MODEL, api_key=OPENAI_API_KEY)
+    else:
+        embedder = OllamaEmbeddings(base_url=OLLAMA_BASE_URL, model=EMBED_MODEL)
     query_embedding = embedder.embed_query(query)
     results = collection.query(query_embeddings=[query_embedding], n_results=5)
 

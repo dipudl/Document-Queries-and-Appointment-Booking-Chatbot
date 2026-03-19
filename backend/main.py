@@ -1,10 +1,10 @@
 import os
 import uuid
 import tempfile
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from graph import chatbot_graph
 from rag import ingest_document
 
@@ -84,10 +84,28 @@ class UploadResponse(BaseModel):
     chunks: int
 
 
+@app.get("/history/{session_id}")
+async def history(session_id: str):
+    session = get_session(session_id)
+    msgs = []
+    for msg in session["messages"]:
+        if isinstance(msg, HumanMessage):
+            msgs.append({"role": "user", "content": msg.content})
+        elif isinstance(msg, AIMessage):
+            msgs.append({"role": "bot", "content": msg.content})
+    return msgs
+
+
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
+
+
 @app.post("/upload", response_model=UploadResponse)
 async def upload(session_id: str = Form(...), file: UploadFile = File(...)):
+    suffix = os.path.splitext(file.filename)[1].lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {suffix}. Use PDF, TXT or MD.")
+
     # Save uploaded file to temp location
-    suffix = os.path.splitext(file.filename)[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         content = await file.read()
         tmp.write(content)

@@ -16,7 +16,7 @@ flowchart TB
     end
 
     subgraph Backend["Backend (FastAPI :8000)"]
-        API[API Endpoints<br/>/chat<br/>/upload]
+        API[API Endpoints<br/>/chat<br/>/upload<br/>/history]
         Store[(In-Memory Sessions<br/>dict per session_id)]
 
         subgraph Graph["LangGraph State Machine"]
@@ -40,6 +40,7 @@ flowchart TB
     User -->|Upload file| Frontend
     App --> Session
     Frontend -->|API calls| API
+    API -->|GET /history| App
     API --> Store
     API --> Router
     Router -->|doc_query| RAG
@@ -73,8 +74,6 @@ ollama pull qwen2.5:1.5b
 ollama pull nomic-embed-text
 ```
 
-The `nomic-embed-text` model is always needed for document embeddings regardless of the LLM provider.
-
 ## Setup
 
 ### Backend
@@ -91,7 +90,7 @@ LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your-key-here
 OLLAMA_BASE_URL=http://localhost:11434
 LLM_MODEL=gpt-4.1
-EMBED_MODEL=nomic-embed-text
+EMBED_MODEL=text-embedding-3-small
 CHROMA_PERSIST_DIR=./chroma_db
 CHUNK_SIZE=1000
 CHUNK_OVERLAP=200
@@ -103,7 +102,7 @@ CHUNK_OVERLAP=200
 | `OPENAI_API_KEY` | Your OpenAI API key (only needed when provider is `openai`) |
 | `LLM_MODEL` | Model name. For OpenAI: `gpt-4.1`, `gpt-4.1-mini`, etc. For Ollama: `qwen2.5:1.5b`, `llama3.1:8b`, etc. |
 | `OLLAMA_BASE_URL` | Ollama server URL (only needed when provider is `ollama`) |
-| `EMBED_MODEL` | Ollama embedding model for RAG |
+| `EMBED_MODEL` | Embedding model. For OpenAI: `text-embedding-3-small`. For Ollama: `nomic-embed-text` |
 | `CHROMA_PERSIST_DIR` | Path to store ChromaDB data |
 | `CHUNK_SIZE` | Document chunk size for splitting |
 | `CHUNK_OVERLAP` | Overlap between chunks |
@@ -117,7 +116,7 @@ npm install
 
 ## Running
 
-Start Ollama (needed for embeddings, and for LLM if using `ollama` provider):
+If using Ollama as the provider, start the Ollama server:
 
 ```bash
 ollama serve
@@ -185,5 +184,5 @@ Multipart form with `session_id` and `file` fields.
 - **Backend**: FastAPI, LangGraph, LangChain and ChromaDB
 - **Frontend**: React and Vite
 - **LLM**: OpenAI (gpt-4.1) or Ollama (qwen2.5:1.5b, llama3.1:8b, etc.)
-- **Embeddings**: nomic-embed-text via Ollama
+- **Embeddings**: OpenAI (text-embedding-3-small) or Ollama (nomic-embed-text)
 - **Date Parsing**: dateparser

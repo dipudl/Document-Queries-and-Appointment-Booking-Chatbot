@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/chat': 'http://localhost:8000',
       '/upload': 'http://localhost:8000',
+      '/history': 'http://localhost:8000',
     },
   },
 })

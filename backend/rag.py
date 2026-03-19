@@ -1,12 +1,15 @@
 import os
 import chromadb
 from langchain_ollama import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from config import OLLAMA_BASE_URL, EMBED_MODEL, CHROMA_PERSIST_DIR, CHUNK_SIZE, CHUNK_OVERLAP
+from config import OLLAMA_BASE_URL, EMBED_MODEL, CHROMA_PERSIST_DIR, CHUNK_SIZE, CHUNK_OVERLAP, LLM_PROVIDER, OPENAI_API_KEY
 
 
 def get_embeddings():
+    if LLM_PROVIDER == "openai":
+        return OpenAIEmbeddings(model=EMBED_MODEL, api_key=OPENAI_API_KEY)
     return OllamaEmbeddings(base_url=OLLAMA_BASE_URL, model=EMBED_MODEL)
 
 
