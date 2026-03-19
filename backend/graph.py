@@ -1,4 +1,5 @@
 import re
+import logging
 from typing import Annotated, Optional
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
@@ -10,6 +11,8 @@ from langgraph.prebuilt import ToolNode
 from config import OLLAMA_BASE_URL, LLM_MODEL, LLM_PROVIDER, OPENAI_API_KEY
 from tools import extract_date, validate_name, validate_phone, validate_email, search_documents
 from prompts import INTENT_CLASSIFIER_MID_APPOINTMENT, INTENT_CLASSIFIER, RAG_SYSTEM, RAG_NO_DOCS
+
+logger = logging.getLogger(__name__)
 
 
 class State(TypedDict):
@@ -42,6 +45,7 @@ def intent_router(state: State) -> State:
             HumanMessage(content=last_msg),
         ])
         intent = check_resp.content.strip().lower()
+        logger.info("Intent (mid-appointment): %s", intent)
         if intent == "doc_query":
             return {**state, "intent": "doc_query"}
         return {**state, "intent": "appointment"}
@@ -55,6 +59,7 @@ def intent_router(state: State) -> State:
     intent = resp.content.strip().lower()
     if intent != "appointment":
         intent = "doc_query"
+    logger.info("Intent classified: %s", intent)
     return {**state, "intent": intent}
 
 
@@ -65,6 +70,9 @@ def rag_node(state: State) -> State:
 
     # Search documents
     result = search_documents.invoke({"query": last_msg, "session_id": session_id})
+
+    num_results = len(result.get("results", []))
+    logger.info("RAG search: %d chunks retrieved for query: %s", num_results, last_msg[:80])
 
     if not result.get("results"):
         llm = get_llm()
@@ -149,6 +157,7 @@ def appointment_node(state: State) -> State:
 
     if not result.get("valid"):
         error = result.get("error", "Invalid input.")
+        logger.info("Appointment validation failed [step=%s]: %s", step, error)
         response = f"{error} Please try again. {FIELD_PROMPTS[step]}"
         return {
             **state,
@@ -168,9 +177,12 @@ def appointment_node(state: State) -> State:
     elif step == "date":
         appointment["date"] = result["date"]
 
+    logger.info("Appointment field collected [step=%s]", step)
+
     # Move to next field
     next_step = _next_missing_field(appointment)
     if not next_step:
+        logger.info("Appointment booking complete: %s", appointment)
         return _confirm_booking(state, appointment)
 
     response = f"Got it! {FIELD_PROMPTS[next_step]}"

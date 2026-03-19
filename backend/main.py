@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 import tempfile
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,9 @@ from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage
 from graph import chatbot_graph
 from rag import ingest_document
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Document Queries & Appointment Booking Chatbot")
 
@@ -48,6 +52,7 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
+    logger.info("Chat request [session=%s]: %s", req.session_id, req.message[:100])
     session = get_session(req.session_id)
 
     # Add user message
@@ -116,6 +121,7 @@ async def upload(session_id: str = Form(...), file: UploadFile = File(...)):
     finally:
         os.unlink(tmp_path)
 
+    logger.info("Uploaded [session=%s]: %s (%d chunks)", session_id, file.filename, chunks)
     return UploadResponse(filename=file.filename, chunks=chunks)
 
 
